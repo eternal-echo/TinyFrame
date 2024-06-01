@@ -1,5 +1,14 @@
 #include "TinyFrame.h"
 
+#include <string.h>
+
+#include "easylink/EasyLink.h"
+#include <ti/sysbios/knl/Semaphore.h>
+#include <ti/sysbios/knl/Task.h>
+
+Semaphore_Struct TF_semStruct;
+Semaphore_Handle TF_semHandle;
+
 /**
  * This is an example of integrating TinyFrame into the application.
  * 
@@ -12,7 +21,13 @@
 
 void TF_WriteImpl(TinyFrame *tf, const uint8_t *buff, uint32_t len)
 {
-    // send to UART
+    EasyLink_TxPacket txPacket = {0};
+    txPacket.len = len;
+    memcpy(txPacket.payload, buff, len);
+    txPacket.dstAddr[0] = 0xaa; // 设置目标地址，可以根据需要修改
+    if (EasyLink_transmit(&txPacket) != EasyLink_Status_Success) {
+        TF_Error("Failed to transmit");
+    }
 }
 
 // --------- Mutex callbacks ----------
@@ -22,14 +37,16 @@ void TF_WriteImpl(TinyFrame *tf, const uint8_t *buff, uint32_t len)
 /** Claim the TX interface before composing and sending a frame */
 bool TF_ClaimTx(TinyFrame *tf)
 {
-    // take mutex
-    return true; // we succeeded
+    if (Semaphore_pend(TF_semHandle, 0) == TRUE) {
+        return true;
+    }
+    return false;
 }
 
 /** Free the TX interface after composing and sending a frame */
 void TF_ReleaseTx(TinyFrame *tf)
 {
-    // release mutex
+    Semaphore_post(TF_semHandle);
 }
 
 // --------- Custom checksums ---------

@@ -8,8 +8,12 @@
 #define TF_CONFIG_H
 
 #include <stdint.h>
-#include <stdio.h> // used by the TF_Error() macro defined below
-//#include <esp8266.h> // when using with esphttpd
+// #include <stdio.h> // used by the TF_Error() macro defined below
+/* XDCtools Header files */
+#include <xdc/std.h>
+#include <xdc/runtime/Assert.h>
+#include <xdc/runtime/Error.h>
+#include <xdc/runtime/System.h>
 
 //----------------------------- FRAME FORMAT ---------------------------------
 // The format can be adjusted to fit your particular application needs
@@ -74,7 +78,9 @@ typedef uint8_t TF_COUNT;
 #define TF_USE_MUTEX  1
 
 // Error reporting function. To disable debug, change to empty define
-#define TF_Error(format, ...) printf("[TF] " format "\n", ##__VA_ARGS__)
+// #define TF_Error(format, ...) printf("[TF] " format "\n", ##__VA_ARGS__)
+extern void uart_printf(const char *fmt, ...);
+#define TF_Error(format, ...) uart_printf("[TF] " format "\n", ##__VA_ARGS__)
 
 //------------------------- End of user config ------------------------------
 
