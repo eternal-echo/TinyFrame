@@ -3,11 +3,14 @@
 #include <string.h>
 
 #include "easylink/EasyLink.h"
+#include <ti/sysbios/BIOS.h>
 #include <ti/sysbios/knl/Semaphore.h>
 #include <ti/sysbios/knl/Task.h>
+#include <ti/sysbios/knl/Mailbox.h>
 
 Semaphore_Struct TF_semStruct;
 Semaphore_Handle TF_semHandle;
+extern Mailbox_Handle tf_tx_mailbox_handle;
 
 /**
  * This is an example of integrating TinyFrame into the application.
@@ -18,7 +21,6 @@ Semaphore_Handle TF_semHandle;
  * Also remember to periodically call TF_Tick() if you wish to use the 
  * listener timeout feature.
  */
-
 void TF_WriteImpl(TinyFrame *tf, const uint8_t *buff, uint32_t len)
 {
     EasyLink_TxPacket txPacket = {0};
@@ -27,9 +29,10 @@ void TF_WriteImpl(TinyFrame *tf, const uint8_t *buff, uint32_t len)
     memcpy(txPacket.payload, buff, len);
     txPacket.dstAddr[0] = 0xaa; // 设置目标地址，可以根据需要修改
     txPacket.absTime = 0; // 设置绝对时间，0表示立即发送
-    result = EasyLink_transmit(&txPacket);
-    if (result != EasyLink_Status_Success) {
-        TF_Error("[TF][hw] TX failed(%d)", result);
+    
+    // 通过邮箱发送数据包到TF_process_func进行处理
+    if (!Mailbox_post(tf_tx_mailbox_handle, &txPacket, BIOS_NO_WAIT)) {
+        TF_Error("[TF][hw] Mailbox_post failed");
     }
 }
 
