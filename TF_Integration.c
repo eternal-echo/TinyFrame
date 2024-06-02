@@ -22,11 +22,14 @@ Semaphore_Handle TF_semHandle;
 void TF_WriteImpl(TinyFrame *tf, const uint8_t *buff, uint32_t len)
 {
     EasyLink_TxPacket txPacket = {0};
+    EasyLink_Status result;
     txPacket.len = len;
     memcpy(txPacket.payload, buff, len);
     txPacket.dstAddr[0] = 0xaa; // 设置目标地址，可以根据需要修改
-    if (EasyLink_transmit(&txPacket) != EasyLink_Status_Success) {
-        TF_Error("Failed to transmit");
+    txPacket.absTime = 0; // 设置绝对时间，0表示立即发送
+    result = EasyLink_transmit(&txPacket);
+    if (result != EasyLink_Status_Success) {
+        TF_Error("[TF][hw] TX failed(%d)", result);
     }
 }
 

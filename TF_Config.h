@@ -79,8 +79,8 @@ typedef uint8_t TF_COUNT;
 
 // Error reporting function. To disable debug, change to empty define
 // #define TF_Error(format, ...) printf("[TF] " format "\n", ##__VA_ARGS__)
-extern void uart_printf(const char *fmt, ...);
-#define TF_Error(format, ...) uart_printf("[TF] " format "\n", ##__VA_ARGS__)
+#include "../../config.h"
+#define TF_Error(format, ...) DEBUG_PRINTF("[TF] " format "\n", ##__VA_ARGS__)
 
 //------------------------- End of user config ------------------------------
 
