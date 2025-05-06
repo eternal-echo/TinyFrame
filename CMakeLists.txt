@@ -1,25 +1,70 @@
-cmake_minimum_required(VERSION 3.7)
-project(tf)
+cmake_minimum_required(VERSION 3.10)
+project(capsule_comm)
 
-# This is a dummy CMakeLists file for CLion, which still doesn't understand Makefiles.
-# Do not try to build the library using this file, it's here only for static analysis.
+# Set C++ standard
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(CMAKE_CXX_STANDARD GNU89)
+# Find required packages
+find_package(Threads REQUIRED)
 
-set(SOURCE_FILES
-        demo/simple/test.c
-        demo/socket_demo/master.c
-        demo/socket_demo/slave.c
-        demo/socket_demo/TF_Config.h
-        demo/demo.c
-        demo/demo.h
-        TinyFrame.c
-        TinyFrame.h
-        TF_Config.example.h
-        demo/utils.c
-        demo/utils.h
-        )
+# Set include directories
+include_directories(${CMAKE_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/examples
+)
 
-include_directories(demo/simple)
+# Add TinyFrame sources
+set(TINYFRAME_SOURCES
+    TinyFrame.c
+)
 
-add_executable(tf ${SOURCE_FILES})
+# Add executable for main application
+add_executable(capsule_app
+    ${TINYFRAME_SOURCES}
+    examples/main.cpp
+    examples/capsule.cpp
+    examples/transceiver.cpp
+    examples/tf_transport.cpp
+)
+
+# Link with required libraries
+target_link_libraries(capsule_app
+    PRIVATE
+    rt              # POSIX real-time extensions (message queues)
+    Threads::Threads # pthreads
+)
+
+# Add simulator executable
+add_executable(simulator
+    examples/simulator.cpp
+)
+
+# Link simulator with required libraries
+target_link_libraries(simulator
+    PRIVATE
+    rt              # POSIX real-time extensions (message queues)
+    Threads::Threads # pthreads
+)
+
+# Install targets
+install(TARGETS capsule_app simulator
+    RUNTIME DESTINATION bin
+)
+
+# Create a 'run' target for convenience
+add_custom_target(run
+    COMMAND capsule_app
+    DEPENDS capsule_app
+    WORKING_DIRECTORY ${CMAKE_PROJECT_DIR}
+)
+
+# Create a 'run_simulator' target
+add_custom_target(run_simulator
+    COMMAND simulator
+    DEPENDS simulator
+    WORKING_DIRECTORY ${CMAKE_PROJECT_DIR}
+)
+
+# Output helpful information
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+message(STATUS "C++ compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
