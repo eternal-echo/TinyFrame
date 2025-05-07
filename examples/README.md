@@ -5,15 +5,37 @@ capsule_comm/
 ├── CMakeLists.txt                # 主CMake文件
 ├── TinyFrame.h
 ├── TinyFrame.c
-├── TF_Config.h               # 自定义配置
 ├── examples/
 │   ├── common.h                  # 共享定义(消息类型、协议等)
-│   ├── tf_transport.cpp          # 使用pipe模拟外部收发器和胶囊的tinyframe的点对点通信底层依赖
-│   ├── capsule.cpp               # 胶囊应用，通过mq和底层交互，通过tcp_transport和上层交互
-│   └── transceiver.cpp           # 外部收发器应用，通过mq和底层交互，通过tcp_transport和上层交互
-│    └── simulator.cpp             # 简单的传感器和控制模拟器
+│   ├── main.cpp                  # 使用boost的mq来模拟tinyframe的点对点主从通信底层依赖，初始化pressure和IMU传感器以及control命令的posix mq并模拟收发数据
+│   ├── TF_Config.h               # 自定义配置
+│   ├── tf_thread.cpp             # 实现tinyframe的应用逻辑，通过mq进行线程间通信
 ```
 
+# 流程
+
+- 流程：
+    - 初始化 board_init：
+        - 创建消息队列(`rf_tx_queue`, `rf_rx_queue`)
+            - 【tinyframe和RF底层之间的MQ】创建posix的消息队列RF_TX_QUEUE_NAME和RF_RX_QUEUE_NAME，用于实现tinyframe和RF底层之间的消息通信，进行解耦方便我更换RF底层驱动。
+        - 【RF底层驱动】rf_dev_handle = &rf_device;
+            - 分配RF设备结构体内存
+            - 设置操作函数集合(ops)
+            - 初始化私有数据(priv)
+    - board_start：
+        - 创建pthread线程启动
+    - _thread：
+        - 初始化tinyframe，配置TF_AddTypeListener等
+        - 持续运行：
+            - rf_rx：
+                - rf_device→rx_start: 启动异步接收
+                - 若tf_rx_queue里有数据则写入到tinyframe里
+            - rf_tx:
+                - 若tf_tx_queue里有数据则rf_device→tx
+    - main：
+        - 初始化其他的依赖，比如模拟数据用的IMU_QUEUE_NAME、PRESSURE_QUEUE_NAME还有模拟控制指令用的CONTROL_QUEUE_NAME的这些mq。
+
+# other
 注意事项：
 - capsule.cpp 和 transceiver.cpp 的代码需要搬运到嵌入式设备上，所以尽量使用posix接口和c语言代码。
 - 其余代码可以尽可能使用现有的新特性或库的方式简单实现，力图高效简单

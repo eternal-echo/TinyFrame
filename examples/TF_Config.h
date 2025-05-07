@@ -6,6 +6,7 @@
  #define TF_CONFIG_H
  
  #include <stdint.h>
+ #include "common.h" 
  
  // Message format configuration
  #define TF_ID_BYTES     1
