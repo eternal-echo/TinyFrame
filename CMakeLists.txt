@@ -1,70 +1,82 @@
 cmake_minimum_required(VERSION 3.10)
-project(capsule_comm)
+project(TinyFrame VERSION 1.0 LANGUAGES C CXX)
 
-# Set C++ standard
-set(CMAKE_CXX_STANDARD 14)
+# 设置 C/C++ 标准
+set(CMAKE_C_STANDARD 99)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Find required packages
+# 检查操作系统
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    message(STATUS "Compiling on Windows")
+    add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+else()
+    message(STATUS "Compiling on ${CMAKE_SYSTEM_NAME}")
+endif()
+
+# 查找依赖项
+find_package(Boost REQUIRED COMPONENTS program_options)
 find_package(Threads REQUIRED)
 
-# Set include directories
-include_directories(${CMAKE_SOURCE_DIR}
-    ${CMAKE_SOURCE_DIR}/examples
-)
-
-# Add TinyFrame sources
-set(TINYFRAME_SOURCES
+# 添加 TinyFrame 库
+add_library(tinyframe STATIC
     TinyFrame.c
 )
 
-# Add executable for main application
-add_executable(capsule_app
-    ${TINYFRAME_SOURCES}
-    examples/main.cpp
-    examples/capsule.cpp
-    examples/transceiver.cpp
-    examples/tf_transport.cpp
+target_include_directories(tinyframe PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/examples
 )
 
-# Link with required libraries
-target_link_libraries(capsule_app
-    PRIVATE
-    rt              # POSIX real-time extensions (message queues)
-    Threads::Threads # pthreads
-)
+# 添加通用编译标志函数
+function(add_tf_executable target_name board_id)
+    add_executable(${target_name}
+        examples/main.cpp
+        examples/tf_thread.cpp
+    )
 
-# Add simulator executable
-add_executable(simulator
-    examples/simulator.cpp
-)
+    target_compile_definitions(${target_name} PRIVATE
+        BOARD_ID=${board_id}
+    )
 
-# Link simulator with required libraries
-target_link_libraries(simulator
-    PRIVATE
-    rt              # POSIX real-time extensions (message queues)
-    Threads::Threads # pthreads
-)
+    target_link_libraries(${target_name} PRIVATE
+        tinyframe
+        Boost::program_options
+        Threads::Threads
+    )
 
-# Install targets
-install(TARGETS capsule_app simulator
-    RUNTIME DESTINATION bin
-)
+    if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
+        target_link_libraries(${target_name} PRIVATE rt)
+    endif()
 
-# Create a 'run' target for convenience
-add_custom_target(run
-    COMMAND capsule_app
-    DEPENDS capsule_app
-    WORKING_DIRECTORY ${CMAKE_PROJECT_DIR}
-)
+    target_include_directories(${target_name} PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/examples
+        ${Boost_INCLUDE_DIRS}
+    )
 
-# Create a 'run_simulator' target
-add_custom_target(run_simulator
-    COMMAND simulator
-    DEPENDS simulator
-    WORKING_DIRECTORY ${CMAKE_PROJECT_DIR}
-)
+    if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+        target_compile_definitions(${target_name} PRIVATE 
+            _CRT_SECURE_NO_WARNINGS
+            MQ_IMPL_WIN=1
+        )
+    endif()
 
-# Output helpful information
+    # 安装规则
+    install(TARGETS ${target_name}
+        RUNTIME DESTINATION bin
+    )
+endfunction()
+
+# 添加服务端和客户端可执行文件
+add_tf_executable(tf_server BOARD_SERVER_ID)
+add_tf_executable(tf_client BOARD_CLIENT_ID)
+
+# 启用调试信息
+set(CMAKE_BUILD_TYPE Debug)
+add_compile_options(-g)
+
+# 打印配置信息
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
-message(STATUS "C++ compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
+message(STATUS "C Compiler: ${CMAKE_C_COMPILER}")
+message(STATUS "C++ Compiler: ${CMAKE_CXX_COMPILER}")

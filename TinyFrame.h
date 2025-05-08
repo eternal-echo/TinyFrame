@@ -127,6 +127,11 @@ typedef struct TF_Msg_ {
     void *userdata2;
 } TF_Msg;
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Clear message struct
  *
@@ -532,6 +537,10 @@ extern void TF_WriteImpl(TinyFrame *tf, const uint8_t *buff, uint32_t len);
      */
     extern TF_CKSUM TF_CksumEnd(TF_CKSUM cksum);
 
-#endif
+#endif // TF_CKSUM_CUSTOM8/16/32
 
-#endif
+#ifdef __cplusplus
+}
+#endif // __cplusplus
+
+#endif // TinyFrameH
